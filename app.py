@@ -13,7 +13,7 @@ st.set_page_config(
     layout="centered",
 )
 
-# --- 2. CSS Custom (Level 1: kosmetik) ---
+# --- 2. CSS Custom (revisi: lebih aman, teks selalu kebaca) ---
 st.markdown("""
 <style>
     @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap');
@@ -23,27 +23,35 @@ st.markdown("""
     }
     
     .stApp {
-        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        background: linear-gradient(135deg, #e0e7ff 0%, #f3e8ff 100%);
     }
     
-    .main .block-container {
-        background: rgba(255, 255, 255, 0.96);
+    [data-testid="stMainBlockContainer"] {
+        background: rgba(255, 255, 255, 0.98);
         border-radius: 20px;
-        padding: 2rem;
-        box-shadow: 0 20px 60px rgba(0,0,0,0.15);
+        padding: 2.5rem 2rem;
+        box-shadow: 0 20px 60px rgba(102, 126, 234, 0.15);
         margin-top: 1.5rem;
+        margin-bottom: 2rem;
     }
     
     h1 {
-        background: linear-gradient(90deg, #667eea, #764ba2);
-        -webkit-background-clip: text;
-        -webkit-text-fill-color: transparent;
+        color: #4c1d95 !important;
         font-weight: 700;
+        text-align: center;
     }
     
-    .stChatMessage {
+    [data-testid="stCaptionContainer"] {
+        text-align: center;
+        color: #6b7280 !important;
+    }
+    
+    [data-testid="stChatMessage"] {
         animation: fadeIn 0.4s ease-in;
         border-radius: 12px;
+        background: #f9fafb;
+        padding: 0.8rem;
+        margin: 0.3rem 0;
     }
     
     @keyframes fadeIn {
@@ -51,9 +59,17 @@ st.markdown("""
         to { opacity: 1; transform: translateY(0); }
     }
     
-    /* Sidebar styling */
     [data-testid="stSidebar"] {
-        background: rgba(255, 255, 255, 0.98);
+        background: #ffffff;
+    }
+    
+    [data-testid="stSidebar"] * {
+        color: #1f2937 !important;
+    }
+    
+    [data-testid="stChatInput"] textarea {
+        background: #ffffff;
+        color: #1f2937;
     }
 </style>
 """, unsafe_allow_html=True)
@@ -64,9 +80,9 @@ client = Groq(api_key=st.secrets["GROQ_API_KEY"])
 # --- 4. Konfigurasi model ---
 MODEL_UTAMA = "openai/gpt-oss-120b"
 MODEL_CADANGAN = "openai/gpt-oss-20b"
-MAX_HISTORY = 10  # batasi 10 pesan terakhir biar nggak kena token limit
+MAX_HISTORY = 10
 
-# --- 5. Definisi persona (Level 2) ---
+# --- 5. Definisi persona ---
 PERSONAS = {
     "🎓 Asisten Akademik": """Kamu adalah TanyaKampus AI, asisten akademik untuk mahasiswa 
 Universitas Negeri Makassar. Jawab dengan ramah, singkat (3-4 kalimat), dan informatif. 
@@ -87,7 +103,7 @@ Jawab setiap pertanyaan dengan punchline ringan, tapi tetap ada isi.
 Maksimal 3 kalimat. Hindari humor yang menyinggung SARA atau fisik seseorang.""",
 }
 
-# --- 6. Sidebar: persona switcher + reset + saran ---
+# --- 6. Sidebar ---
 with st.sidebar:
     st.markdown("### 🎭 Pilih Mode")
     persona_pilihan = st.radio(
@@ -118,25 +134,21 @@ st.caption("Chatbot buatan sendiri. Dibuat oleh peserta Study Jam AI/ML GDGoC UN
 if "messages" not in st.session_state:
     st.session_state.messages = []
 
-# --- 9. Tampilkan semua pesan sebelumnya ---
+# --- 9. Tampilkan pesan sebelumnya ---
 for msg in st.session_state.messages:
     with st.chat_message(msg["role"]):
         st.markdown(msg["content"])
 
 # --- 10. Input dari user ---
 if prompt := st.chat_input("Tanya apa saja soal kampus..."):
-    # Tampilkan pesan user
     st.session_state.messages.append({"role": "user", "content": prompt})
     with st.chat_message("user"):
         st.markdown(prompt)
 
-    # Dapatkan respons dari Groq
     with st.chat_message("assistant"):
-        # Bangun payload: system prompt (sesuai persona) + history
         payload = [{"role": "system", "content": PERSONAS[persona_pilihan]}]
         payload += st.session_state.messages[-MAX_HISTORY:]
 
-        # Coba model utama, fallback ke cadangan kalau kena rate limit
         try:
             response = client.chat.completions.create(
                 messages=payload,
